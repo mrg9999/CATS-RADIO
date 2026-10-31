@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Coulsdon Amateur Transmitting Society (CATS)</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: #fff;
+    color: #000;
+}
+
+h1, h2, h3 {
+    margin: 10px 0;
+}
+
+p, div {
+    font-family: Georgia, serif;
+    font-size: 1.1em;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+.hit-counter {
+    background: #f0f0f0;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.meeting-schedule {
+    margin-top: 20px;
+}
+
+.file-help {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 10px;
+    margin: 10px 0;
+    display: none;
+}
+
+.status-message {
+    font-style: italic;
+    color: #555;
+    margin: 5px 0;
+}
+
+.refresh-button {
+    padding: 8px 16px;
+    margin: 10px 0;
+    background: #007cba;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+.refresh-button:hover {
+    background: #005a87;
+}
+
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.map-image,
+.calendar-container iframe {
+    width: 800px;
+    height: 600px;
+}
+
+@keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="hit-counter">
+    You are visitor number: <span id="counter">Loading…</span>
+</div>
+
+<img src="CATS_masthead.jpg" alt="CATS Masthead" width="800" height="200">
+
+<h1>Coulsdon Amateur Transmitting Society (CATS)</h1>
+
+<h1 title="Click to open PDF"
+    onclick="window.open('CATS-Flyer.pdf','_blank')"
+    style="cursor:pointer;">
+    <span style="color:#0066ff;font-weight:bold;animation:blink 1s infinite;">
+        Click here
+    </span> to open an informational flyer
+</h1>
+
+<div class="contact-info">
+    <div><strong>Contact:</strong> Secretary.at.catsradio.org.uk</div>
+    <div><strong>Meetings:</strong> St&nbsp;Swithun's&nbsp;Church&nbsp;Hall, Grovelands Road, Purley, Surrey, CR8&nbsp;4LB</div>
+    <div><strong>Parking:</strong> On-street along Grovelands Road</div>
+    <div><strong>Locator:</strong> IO91WI</div>
+    <div><strong>Time:</strong> 2nd Monday of the month, 19:45 local time (unless varied)</div>
+</div>
+
+<div class="meeting-schedule">
+    <h2>Meeting Schedule</h2>
+
+    <div id="fileHelp" class="file-help">
+        <strong>Note:</strong> events.txt could not be loaded. Using built-in schedule.
+    </div>
+
+    <button class="refresh-button" onclick="refreshMeetings()">Refresh Meetings</button>
+    <div id="statusMessage" class="status-message">Loading events…</div>
+
+    <div id="meetingSchedule"></div>
+</div>
+
+<div class="container">
+    <img class="map-image" src="meetings_map.jpg"
+         alt="St. Swithun's Church Hall map">
+
+    <div class="calendar-container">
+        <iframe
+            src="https://calendar.google.com/calendar/embed?src=catsradiocalendar%40gmail.com&ctz=Europe%2FLondon"
+            style="border:0">
+        </iframe>
+    </div>
+</div>
+
+<script>
+/* ---------- FALLBACK EVENTS ---------- */
+const defaultEvents = `
+Monday 12th January; New Year Drinks and Monthly Meeting Planning + On-line Video
+Monday 9th February; TBA
+Monday 9th March; Surplus Equipment Table Top Sale
+Monday 9th April; TBA
+`;
+
+/* ---------- PAGE INIT ---------- */
+document.addEventListener('DOMContentLoaded', () => {
+    updateCounter();
+    loadMeetings();
+});
+
+/* ---------- VISITOR COUNTER ---------- */
+function updateCounter() {
+    let count = localStorage.getItem('pageCount');
+    count = count ? parseInt(count, 10) + 1 : 97513;
+    localStorage.setItem('pageCount', count);
+    document.getElementById('counter').textContent = count;
+}
+
+/* ---------- LOAD EVENTS ---------- */
+async function loadMeetings() {
+    const status = document.getElementById('statusMessage');
+    const help = document.getElementById('fileHelp');
+
+    try {
+        const url = new URL('events.txt', window.location.href);
+        const response = await fetch(url, { cache: 'no-store' });
+
+        if (!response.ok) throw new Error(response.status);
+
+        const text = await response.text();
+        renderMeetings(text);
+
+        help.style.display = 'none';
+        status.textContent = 'Last updated: ' + new Date().toLocaleString();
+    }
+    catch (err) {
+        console.warn('events.txt load failed:', err);
+        renderMeetings(defaultEvents);
+        help.style.display = 'block';
+        status.textContent = 'Using built-in schedule';
+    }
+}
+
+/* ---------- REFRESH ---------- */
+function refreshMeetings() {
+    document.getElementById('statusMessage').textContent = 'Refreshing…';
+    loadMeetings();
+}
+
+/* ---------- RENDER ---------- */
+function renderMeetings(text) {
+    const out = document.getElementById('meetingSchedule');
+
+    let content = text;
+    const b = text.indexOf('[BEGIN]');
+    const e = text.indexOf('[END]');
+    if (b !== -1 && e !== -1 && e > b) {
+        content = text.slice(b + 7, e).trim();
+    }
+
+    const lines = content.split(/\r?\n/).filter(Boolean);
+
+    out.innerHTML = lines.map(line => {
+    return `<div><strong>${
+        line
+            .replace(/;/g, ' &ndash; ')
+            .replace(/\bTBA\b/g, '&ldquo;TBA&rdquo;')
+    }</strong></div>`;
+}).join('');
+}
+
+/* ---------- AUTO-OPEN FLYER AFTER 30s ---------- */
+setTimeout(() => {
+    window.open('CATS-Flyer.pdf','_blank');
+}, 30000);
+</script>
+
+</body>
+</html>
